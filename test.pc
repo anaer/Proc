@@ -1,0 +1,139 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <sqlca.h>
+#include <oraca.h>
+#include <sqlcpr.h>
+#include <assert.h>
+#include <stdarg.h>
+#include <string.h>
+#include <math.h>
+#include <time.h>
+#include <sys/timeb.h>
+
+char* GetSysParameter(char* c_class, char* c_item);
+void TestMemset();
+void TestString();
+
+int main(int argvc, char** agr)
+{
+    struct timeb time_b, time_e;
+    double diff;
+    int i=0;
+    int len=0;
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    char temp[100]="";
+    char businflag[10][3];
+    char date[10][20];
+    EXEC SQL END DECLARE SECTION;
+	printf("Begin Connect DataBase:\n");
+    ftime(&time_b);
+    EXEC SQL CONNECT :"S1536/S1536@orcl";
+    ftime(&time_e);
+    if (sqlca.sqlcode < 0)
+    {
+        printf("Connect Failed!\n");
+    }
+    else
+        printf("Connect Successed!\n");
+
+    diff = time_e.time-time_b.time+(time_e.millitm-time_b.millitm)/1000;
+    printf("Time Use:%.3f\n", diff);
+
+    EXEC SQL select sysdate into :temp from dual;
+    printf("sysdate=%s\n", temp);
+
+    EXEC SQL WHENEVER SQLERROR goto error;
+    EXEC SQL declare cur cursor for
+        select a.c_businflag, a.d_date from taccorequest a;
+
+    EXEC SQL open cur;
+
+    //memset(businflag, '\0', sizeof(businflag));
+    //memset(date, '\0', sizeof(date));
+    EXEC SQL fetch cur into businflag, date;
+    printf("DealRows:%d\n", sqlca.sqlerrd[2]);
+
+    len = sizeof(businflag)/sizeof(businflag[0]);
+    for(i=0; i<len; i++){
+        printf("%d:%s,%s\n", i, businflag[i], date[i]);
+    }
+
+    GetSysParameter("System", "FundAccountSerial");
+
+    TestMemset();
+
+    TestString();
+
+    return 0;
+error:
+    printf("error:%s\n",sqlca.sqlcode);
+    exit(1);
+}
+
+char* GetSysParameter(char* cc_class, char* cc_item)
+{
+    EXEC SQL BEGIN DECLARE SECTION;
+    char result[100];
+    char c_class[100];
+    char c_item[100];
+    EXEC SQL END DECLARE SECTION;
+
+    strcpy(c_class, cc_class);
+    strcpy(c_item, cc_item);
+    EXEC SQL WHENEVER SQLERROR goto error;
+    EXEC SQL select c_value into :result from tsysparameter
+        where trim(c_class) = :c_class
+        and trim(c_item) = :c_item;
+    printf("result:%s\n", result);
+    return result;
+
+error:
+    printf("error:%s\n",sqlca.sqlcode);
+    return "";
+}
+
+void TestMemset(){
+    char* test1 = "test";
+    char* test2 = "test";
+    printf("test1 src:%s\n", test1);
+    printf("test2 src:%s\n", test2);
+
+    memset(test1, '\0', 2);
+    memset(test2, '\0', sizeof(test2));
+
+    printf("test1 set:%s\n", test1);
+    printf("test2 set:%s\n", test2);
+
+    printf("test1+3 set:%s\n", test1+3);
+    printf("test2+3 set:%s\n", test2+3);
+
+}
+
+void TestString(){
+    int result = 9;
+
+    result = 1==3;
+
+    printf("TestString result=%d\n", result);
+
+    result = 1==1;
+
+    printf("TestString result=%d\n", result);
+
+    printf("rand=%.6d\t%6d", rand(), rand());
+}
+
+void TestString2(){
+    int result = 9;
+
+    result = 1==3;
+
+    printf("TestString result=%d\n", result);
+
+    result = 1==1;
+
+    printf("TestString result=%d\n", result);
+
+    printf("rand=%.6d\t%6d", rand(), rand());
+}
